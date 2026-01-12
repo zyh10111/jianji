@@ -50,14 +50,32 @@ jobs:
       - name: Configure EAS
         run: eas build:configure --non-interactive
         continue-on-error: true
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Login to Expo
-        run: eas login --non-interactive
+      - name: Verify Expo authentication
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "❌ EXPO_TOKEN secret is not set"
+            echo "Please configure EXPO_TOKEN in GitHub Secrets"
+            exit 1
+          fi
+          
+          # 验证 token 是否有效
+          eas whoami --non-interactive || {
+            echo "❌ Invalid EXPO_TOKEN"
+            echo "Please check your Expo access token"
+            exit 1
+          }
+          
+          echo "✅ Authenticated successfully"
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build APK
         id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           PROFILE="${{ github.event.inputs.build_profile || 'preview' }}"
           echo "Building with profile: $PROFILE"
@@ -80,6 +98,8 @@ jobs:
 
       - name: Wait for build to complete
         if: steps.build.outputs.build_id != ''
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           BUILD_ID="${{ steps.build.outputs.build_id }}"
           echo "Waiting for build $BUILD_ID to complete..."
@@ -124,10 +144,12 @@ jobs:
 
       - name: Download APK
         if: steps.wait.outputs.download_url != ''
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           DOWNLOAD_URL="${{ steps.wait.outputs.download_url }}"
           echo "Downloading APK from: $DOWNLOAD_URL"
-          curl -L -o app.apk "$DOWNLOAD_URL"
+          curl -L -H "Authorization: Bearer $EXPO_TOKEN" -o app.apk "$DOWNLOAD_URL"
           echo "APK downloaded successfully"
 
       - name: Upload APK as artifact
