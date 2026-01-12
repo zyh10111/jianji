@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "简记 NoteEase",
+    "slug": "noteease",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.noteease.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "需要使用语音识别功能来将您的语音转换为文字笔记",
+        "NSMicrophoneUsageDescription": "需要使用麦克风来录制语音"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.noteease.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "允许访问麦克风以录制语音笔记。"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "45220f76-b336-4869-9d94-31af4546d1a9"
+      }
+    }
+  }
+}
