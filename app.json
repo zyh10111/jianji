@@ -34,7 +34,8 @@
         {
           "microphonePermission": "允许访问麦克风以录制语音笔记。"
         }
-      ]
+      ],
+      "./plugins/withGradleMirror"
     ],
     "extra": {
       "eas": {
