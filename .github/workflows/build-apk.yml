@@ -1,0 +1,154 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      build_profile:
+        description: '构建类型 (preview/production/development)'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+          - development
+
+jobs:
+  build:
+    name: Build APK with EAS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Configure EAS
+        run: eas build:configure --non-interactive
+        continue-on-error: true
+
+      - name: Login to Expo
+        run: eas login --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build APK
+        id: build
+        run: |
+          PROFILE="${{ github.event.inputs.build_profile || 'preview' }}"
+          echo "Building with profile: $PROFILE"
+          
+          # 运行构建（使用 --no-wait 不等待构建完成）
+          eas build --platform android --profile "$PROFILE" --non-interactive --no-wait
+          
+          # 获取最新的构建ID
+          sleep 5  # 等待构建创建
+          BUILD_JSON=$(eas build:list --platform android --limit 1 --json)
+          BUILD_ID=$(echo "$BUILD_JSON" | jq -r '.[0].id // empty')
+          
+          if [ -z "$BUILD_ID" ] || [ "$BUILD_ID" = "null" ]; then
+            echo "Failed to get build ID"
+            exit 1
+          fi
+          
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build ID: $BUILD_ID"
+
+      - name: Wait for build to complete
+        if: steps.build.outputs.build_id != ''
+        run: |
+          BUILD_ID="${{ steps.build.outputs.build_id }}"
+          echo "Waiting for build $BUILD_ID to complete..."
+          echo "This may take 10-20 minutes..."
+          
+          # 等待构建完成（最多等待30分钟）
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            
+            BUILD_JSON=$(eas build:view "$BUILD_ID" --json)
+            STATUS=$(echo "$BUILD_JSON" | jq -r '.status // "unknown"')
+            
+            echo "[$ATTEMPT/$MAX_ATTEMPTS] Build status: $STATUS"
+            
+            if [ "$STATUS" = "finished" ]; then
+              echo "✅ Build completed successfully!"
+              DOWNLOAD_URL=$(echo "$BUILD_JSON" | jq -r '.artifacts.buildUrl // empty')
+              
+              if [ -n "$DOWNLOAD_URL" ] && [ "$DOWNLOAD_URL" != "null" ]; then
+                echo "download_url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+                echo "Download URL: $DOWNLOAD_URL"
+              else
+                echo "⚠️ Download URL not available yet"
+              fi
+              break
+            elif [ "$STATUS" = "errored" ] || [ "$STATUS" = "canceled" ]; then
+              echo "❌ Build failed with status: $STATUS"
+              exit 1
+            fi
+            
+            sleep 30
+          done
+          
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "⏱️ Build timeout. Check status at: https://expo.dev/accounts/[your-account]/projects/noteease/builds"
+            echo "Build may still be in progress. Please check manually."
+          fi
+        id: wait
+
+      - name: Download APK
+        if: steps.wait.outputs.download_url != ''
+        run: |
+          DOWNLOAD_URL="${{ steps.wait.outputs.download_url }}"
+          echo "Downloading APK from: $DOWNLOAD_URL"
+          curl -L -o app.apk "$DOWNLOAD_URL"
+          echo "APK downloaded successfully"
+
+      - name: Upload APK as artifact
+        if: steps.wait.outputs.download_url != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: app.apk
+          retention-days: 30
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.wait.outputs.download_url }}" != "" ]; then
+            echo "✅ Build completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Download APK from the artifacts above or visit:" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.wait.outputs.download_url }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Build may still be in progress. Check Expo dashboard:" >> $GITHUB_STEP_SUMMARY
+            echo "https://expo.dev/accounts/[your-account]/projects/noteease/builds" >> $GITHUB_STEP_SUMMARY
+          fi
