@@ -1,4 +1,4 @@
-const { withProjectBuildGradle, withAppBuildGradle } = require('@expo/config-plugins');
+const { withProjectBuildGradle, withAppBuildGradle } = require('expo/config-plugins');
 
 /**
  * 添加阿里云镜像源到 repositories 块

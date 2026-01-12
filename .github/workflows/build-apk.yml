@@ -52,6 +52,12 @@ jobs:
 
       - name: Fix Expo dependencies
         run: npx expo install --fix || echo "Dependency check completed"
+      
+      - name: Check Expo doctor (warning only)
+        run: |
+          # 运行 expo doctor 但不失败（某些警告不影响构建）
+          npx expo-doctor || echo "⚠️ Expo doctor found warnings (this won't fail the build)"
+          echo "Note: Project is using Expo SDK 50"
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
@@ -76,7 +82,15 @@ jobs:
           echo "✅ app.json configuration looks good"
 
       - name: Configure EAS
-        run: eas build:configure --non-interactive
+        run: |
+          # 检查 eas.json 是否存在，如果存在则跳过配置
+          if [ -f "eas.json" ]; then
+            echo "✅ eas.json already exists, skipping configuration"
+          else
+            echo "⚠️ eas.json not found"
+            echo "Note: EAS build will use default configuration"
+            echo "You can manually configure by running: eas build:configure"
+          fi
         continue-on-error: true
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -109,20 +123,49 @@ jobs:
           echo "Building with profile: $PROFILE"
           
           # 运行构建（使用 --no-wait 不等待构建完成）
-          eas build --platform android --profile "$PROFILE" --non-interactive --no-wait
+          BUILD_OUTPUT=$(eas build --platform android --profile "$PROFILE" --non-interactive --no-wait 2>&1)
+          echo "$BUILD_OUTPUT"
           
-          # 获取最新的构建ID
-          sleep 5  # 等待构建创建
-          BUILD_JSON=$(eas build:list --platform android --limit 1 --json)
-          BUILD_ID=$(echo "$BUILD_JSON" | jq -r '.[0].id // empty')
+          # 从输出中提取构建 ID（从 URL 中提取）
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oE 'builds/[a-f0-9-]{36}' | head -1 | cut -d'/' -f2 || echo "")
+          
+          # 如果从 URL 中找不到，尝试从日志链接中提取
+          if [ -z "$BUILD_ID" ]; then
+            BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oE '[a-f0-9-]{36}' | head -1 || echo "")
+          fi
+          
+          # 如果从输出中找不到，等待后从列表获取
+          if [ -z "$BUILD_ID" ]; then
+            echo "Build ID not found in output, waiting and querying build list..."
+            sleep 10  # 等待构建创建
+            
+            # 多次尝试获取构建列表
+            for i in 1 2 3; do
+              BUILD_JSON=$(eas build:list --platform android --limit 1 --json 2>&1)
+              
+              if echo "$BUILD_JSON" | jq -e '.[0].id' >/dev/null 2>&1; then
+                BUILD_ID=$(echo "$BUILD_JSON" | jq -r '.[0].id // empty')
+                if [ -n "$BUILD_ID" ] && [ "$BUILD_ID" != "null" ]; then
+                  break
+                fi
+              fi
+              
+              if [ $i -lt 3 ]; then
+                echo "Retry $i/3: Waiting for build to appear in list..."
+                sleep 5
+              fi
+            done
+          fi
           
           if [ -z "$BUILD_ID" ] || [ "$BUILD_ID" = "null" ]; then
-            echo "Failed to get build ID"
+            echo "❌ Failed to get build ID"
+            echo "Build output:"
+            echo "$BUILD_OUTPUT"
             exit 1
           fi
           
           echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
-          echo "Build ID: $BUILD_ID"
+          echo "✅ Build ID: $BUILD_ID"
 
       - name: Wait for build to complete
         if: steps.build.outputs.build_id != ''
