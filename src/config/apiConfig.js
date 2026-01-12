@@ -2,16 +2,10 @@
  * API配置
  * 
  * 使用说明：
- * 1. 百度语音识别API（推荐，国内使用）
+ * 百度语音识别API（推荐，国内使用）
  *    - 访问 https://ai.baidu.com/ 注册账号
  *    - 创建语音识别应用，获取API Key和Secret Key
  *    - 将API_KEY和SECRET_KEY填入下方配置
- * 
- * 2. Google Cloud Speech-to-Text（需要翻墙）
- *    - 访问 https://cloud.google.com/speech-to-text 注册账号
- *    - 创建项目并启用Speech-to-Text API
- *    - 获取API密钥或服务账号JSON文件
- *    - 将API_KEY填入下方配置
  */
 
 // 百度语音识别API配置（推荐）
@@ -22,13 +16,7 @@ export const BAIDU_API_CONFIG = {
   TOKEN_URL: 'https://aip.baidubce.com/oauth/2.0/token',
 };
 
-// Google Cloud Speech-to-Text配置（备选）
-export const GOOGLE_API_CONFIG = {
-  API_KEY: 'YOUR_GOOGLE_API_KEY',        // 替换为你的Google API Key
-  BASE_URL: 'https://speech.googleapis.com/v1/speech:recognize',
-};
-
-// 当前使用的API提供商（'baidu' 或 'google'）
+// 当前使用的API提供商（'baidu'）
 export const CURRENT_API_PROVIDER = 'baidu';
 
 // 是否启用语音识别（false时使用模拟实现）

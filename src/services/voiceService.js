@@ -3,13 +3,11 @@
  * 
  * 支持多种语音识别API：
  * - 百度语音识别API（推荐，国内使用）
- * - Google Cloud Speech-to-Text API
  * - 模拟实现（用于演示）
  */
 
 import { CURRENT_API_PROVIDER, ENABLE_VOICE_RECOGNITION } from '../config/apiConfig';
 import { baiduSpeechToText } from './baiduSpeechService';
-import { googleSpeechToText } from './googleSpeechService';
 
 /**
  * 语音转文字主函数
@@ -29,9 +27,6 @@ export const speechToText = async (audioUri, options = {}) => {
     switch (CURRENT_API_PROVIDER) {
       case 'baidu':
         return await baiduSpeechToText(audioUri, options);
-      
-      case 'google':
-        return await googleSpeechToText(audioUri, options);
       
       default:
         console.warn(`未知的API提供商: ${CURRENT_API_PROVIDER}，使用模拟实现`);
