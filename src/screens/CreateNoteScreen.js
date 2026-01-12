@@ -59,8 +59,29 @@ const CreateNoteScreen = ({ navigation, route }) => {
         playsInSilentModeIOS: true,
       });
 
+      // 配置录音选项，匹配百度API要求
+      // 使用 HIGH_QUALITY 预设作为基础，然后根据平台调整
+      const baseOptions = Audio.RecordingOptionsPresets.HIGH_QUALITY;
+      
+      // 针对 Android 和 iOS 平台优化配置
+      const recordingOptions = {
+        ...baseOptions,
+        android: {
+          ...baseOptions.android,
+          extension: '.wav',
+          sampleRate: 16000,  // 百度API推荐采样率
+          numberOfChannels: 1, // 单声道
+        },
+        ios: {
+          ...baseOptions.ios,
+          extension: '.wav',
+          sampleRate: 16000,  // 百度API推荐采样率
+          numberOfChannels: 1, // 单声道
+        },
+      };
+
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        recordingOptions
       );
       setRecording(recording);
       setIsRecording(true);
@@ -81,10 +102,10 @@ const CreateNoteScreen = ({ navigation, route }) => {
       const uri = recording.getURI();
       setRecording(null);
 
-      // 模拟语音转文字（实际应用中应调用真实API）
+      // 语音转文字
       try {
         const result = await speechToText(uri);
-        if (result.text) {
+        if (result && result.text) {
           // 添加到内容
           setContent(prev => prev ? prev + '\n' + result.text : result.text);
           
@@ -107,12 +128,30 @@ const CreateNoteScreen = ({ navigation, route }) => {
               return newTags;
             });
           }
+          
+          // 成功提示（可选）
+          console.log('语音识别成功，已添加到笔记内容');
+        } else {
+          Alert.alert('提示', '语音识别未返回结果，请重试');
         }
       } catch (error) {
-        Alert.alert('提示', '语音识别功能需要使用真实的API，当前为演示模式');
-        // 演示：添加示例文本
-        const demoText = '这是语音转换的文本示例。您可以在这里输入或粘贴实际的语音识别结果。';
-        setContent(prev => prev ? prev + '\n' + demoText : demoText);
+        console.error('语音识别错误:', error);
+        
+        // 根据错误类型显示不同的提示
+        let errorMessage = '语音识别失败';
+        if (error.message) {
+          if (error.message.includes('配置') || error.message.includes('API Key')) {
+            errorMessage = `API配置错误\n\n${error.message}\n\n请检查 src/config/apiConfig.js 中的配置。`;
+          } else if (error.message.includes('网络') || error.message.includes('连接')) {
+            errorMessage = `网络连接失败\n\n${error.message}\n\n请检查网络连接后重试。`;
+          } else if (error.message.includes('音频') || error.message.includes('格式')) {
+            errorMessage = `音频处理失败\n\n${error.message}\n\n请重新录制。`;
+          } else {
+            errorMessage = `${error.message}\n\n如果问题持续，请检查API配置和网络连接。`;
+          }
+        }
+        
+        Alert.alert('语音识别失败', errorMessage);
       }
     } catch (error) {
       Alert.alert('错误', '录音失败：' + error.message);

@@ -167,81 +167,35 @@ jobs:
           echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "✅ Build ID: $BUILD_ID"
 
-      - name: Wait for build to complete
+      - name: Build Summary
         if: steps.build.outputs.build_id != ''
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           BUILD_ID="${{ steps.build.outputs.build_id }}"
-          echo "Waiting for build $BUILD_ID to complete..."
-          echo "This may take 10-20 minutes..."
+          BUILD_URL="https://expo.dev/accounts/zyh123456/projects/noteease/builds/$BUILD_ID"
           
-          # 等待构建完成（最多等待30分钟）
-          MAX_ATTEMPTS=60
-          ATTEMPT=0
-          
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            
-            BUILD_JSON=$(eas build:view "$BUILD_ID" --json)
-            STATUS=$(echo "$BUILD_JSON" | jq -r '.status // "unknown"')
-            
-            echo "[$ATTEMPT/$MAX_ATTEMPTS] Build status: $STATUS"
-            
-            if [ "$STATUS" = "finished" ]; then
-              echo "✅ Build completed successfully!"
-              DOWNLOAD_URL=$(echo "$BUILD_JSON" | jq -r '.artifacts.buildUrl // empty')
-              
-              if [ -n "$DOWNLOAD_URL" ] && [ "$DOWNLOAD_URL" != "null" ]; then
-                echo "download_url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
-                echo "Download URL: $DOWNLOAD_URL"
-              else
-                echo "⚠️ Download URL not available yet"
-              fi
-              break
-            elif [ "$STATUS" = "errored" ] || [ "$STATUS" = "canceled" ]; then
-              echo "❌ Build failed with status: $STATUS"
-              exit 1
-            fi
-            
-            sleep 30
-          done
-          
-          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            echo "⏱️ Build timeout. Check status at: https://expo.dev/accounts/[your-account]/projects/noteease/builds"
-            echo "Build may still be in progress. Please check manually."
-          fi
-        id: wait
-
-      - name: Download APK
-        if: steps.wait.outputs.download_url != ''
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          DOWNLOAD_URL="${{ steps.wait.outputs.download_url }}"
-          echo "Downloading APK from: $DOWNLOAD_URL"
-          curl -L -H "Authorization: Bearer $EXPO_TOKEN" -o app.apk "$DOWNLOAD_URL"
-          echo "APK downloaded successfully"
-
-      - name: Upload APK as artifact
-        if: steps.wait.outputs.download_url != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: app.apk
-          retention-days: 30
-
-      - name: Build Summary
-        if: always()
-        run: |
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Build Triggered Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.wait.outputs.download_url }}" != "" ]; then
-            echo "✅ Build completed successfully!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Download APK from the artifacts above or visit:" >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.wait.outputs.download_url }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ Build may still be in progress. Check Expo dashboard:" >> $GITHUB_STEP_SUMMARY
-            echo "https://expo.dev/accounts/[your-account]/projects/noteease/builds" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "✅ Build has been triggered and is running in the cloud." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build ID:** \`$BUILD_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**View Build Status:**" >> $GITHUB_STEP_SUMMARY
+          echo "[$BUILD_URL]($BUILD_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Estimated Time:** 10-20 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📱 **Download APK:**" >> $GITHUB_STEP_SUMMARY
+          echo "Once the build completes, you can download the APK from the link above." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Tip:** You can also check build status in the Expo dashboard." >> $GITHUB_STEP_SUMMARY
+          
+          echo ""
+          echo "=========================================="
+          echo "✅ Build triggered successfully!"
+          echo "Build ID: $BUILD_ID"
+          echo "View status: $BUILD_URL"
+          echo "=========================================="
+          echo ""
+          echo "⏱️  Build is running in the cloud (10-20 minutes)"
+          echo "📱  Download APK from Expo dashboard when ready"
+

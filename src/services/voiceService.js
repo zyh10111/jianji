@@ -19,23 +19,35 @@ import { baiduSpeechToText } from './baiduSpeechService';
 export const speechToText = async (audioUri, options = {}) => {
   // 如果未启用语音识别，使用模拟实现
   if (!ENABLE_VOICE_RECOGNITION) {
+    console.log('语音识别未启用，使用模拟实现');
     return await mockSpeechToText(audioUri);
   }
 
-  try {
-    // 根据配置选择API提供商
-    switch (CURRENT_API_PROVIDER) {
-      case 'baidu':
-        return await baiduSpeechToText(audioUri, options);
-      
-      default:
-        console.warn(`未知的API提供商: ${CURRENT_API_PROVIDER}，使用模拟实现`);
-        return await mockSpeechToText(audioUri);
-    }
-  } catch (error) {
-    console.error('语音识别失败，使用模拟实现:', error);
-    // 如果API调用失败，回退到模拟实现
-    return await mockSpeechToText(audioUri);
+  // 根据配置选择API提供商
+  switch (CURRENT_API_PROVIDER) {
+    case 'baidu':
+      try {
+        console.log('使用百度语音识别API...');
+        const result = await baiduSpeechToText(audioUri, options);
+        console.log('语音识别成功:', result.text);
+        return result;
+      } catch (apiError) {
+        console.error('百度语音识别API调用失败:', apiError.message);
+        
+        // 配置错误：提示用户配置
+        if (apiError.message.includes('配置') || 
+            apiError.message.includes('API Key') ||
+            apiError.message.includes('Token失败')) {
+          throw new Error(`API配置错误: ${apiError.message}\n\n请检查 src/config/apiConfig.js 中的 API Key 和 Secret Key 是否正确。`);
+        }
+        
+        // 其他错误：重新抛出，让调用者处理
+        throw apiError;
+      }
+    
+    default:
+      console.warn(`未知的API提供商: ${CURRENT_API_PROVIDER}，使用模拟实现`);
+      return await mockSpeechToText(audioUri);
   }
 };
 

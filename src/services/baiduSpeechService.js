@@ -63,7 +63,9 @@ const getAccessToken = async () => {
 export const baiduSpeechToText = async (audioUri, options = {}) => {
   try {
     // 检查配置
-    if (BAIDU_API_CONFIG.API_KEY === 'YOUR_BAIDU_API_KEY' || 
+    if (!BAIDU_API_CONFIG.API_KEY || 
+        !BAIDU_API_CONFIG.SECRET_KEY ||
+        BAIDU_API_CONFIG.API_KEY === 'YOUR_BAIDU_API_KEY' || 
         BAIDU_API_CONFIG.SECRET_KEY === 'YOUR_BAIDU_SECRET_KEY') {
       throw new Error('请先在 src/config/apiConfig.js 中配置百度API Key和Secret Key');
     }
@@ -74,14 +76,22 @@ export const baiduSpeechToText = async (audioUri, options = {}) => {
     // 将音频转换为Base64
     const audioBase64 = await audioToBase64(audioUri);
 
-    // 默认配置
+    // 默认配置（匹配 expo-av 录音配置）
     const defaultOptions = {
-      format: 'wav',      // 音频格式
-      rate: 16000,        // 采样率（16000适用于中文）
-      channel: 1,         // 声道数（1-单声道，2-双声道）
+      format: 'wav',      // 音频格式（expo-av 录制为 wav）
+      rate: 16000,        // 采样率（16000适用于中文，与录音配置一致）
+      channel: 1,         // 声道数（1-单声道，与录音配置一致）
       language: 'zh',     // 语言（zh-普通话）
       ...options,
     };
+    
+    console.log('百度语音识别配置:', {
+      format: defaultOptions.format,
+      rate: defaultOptions.rate,
+      channel: defaultOptions.channel,
+      language: defaultOptions.language,
+      audioLength: audioBase64.length,
+    });
 
     // 构建请求参数
     const params = {

@@ -90,12 +90,21 @@ export const searchNotes = async (query) => {
   try {
     const notes = await getAllNotes();
     const lowerQuery = query.toLowerCase();
-    return notes.filter(note => 
-      note.title.toLowerCase().includes(lowerQuery) ||
-      note.content.toLowerCase().includes(lowerQuery) ||
-      note.tags.some(tag => tag.toLowerCase().includes(lowerQuery)) ||
-      note.category.toLowerCase().includes(lowerQuery)
-    );
+    return notes.filter(note => {
+      try {
+        // 安全检查：确保所有字段存在
+        const titleMatch = note.title && note.title.toLowerCase().includes(lowerQuery);
+        const contentMatch = note.content && note.content.toLowerCase().includes(lowerQuery);
+        const tagsMatch = note.tags && Array.isArray(note.tags) && 
+          note.tags.some(tag => tag && tag.toLowerCase().includes(lowerQuery));
+        const categoryMatch = note.category && note.category.toLowerCase().includes(lowerQuery);
+        
+        return titleMatch || contentMatch || tagsMatch || categoryMatch;
+      } catch (err) {
+        console.error('搜索单个笔记时出错:', err, note);
+        return false;
+      }
+    });
   } catch (error) {
     console.error('搜索笔记失败:', error);
     return [];

@@ -9,8 +9,8 @@
 ✅ **自动化构建**：推送代码到 GitHub 时自动触发构建  
 ✅ **多种触发方式**：支持 push、tag、pull request 和手动触发  
 ✅ **构建类型选择**：支持 preview、production、development 三种构建类型  
-✅ **自动下载**：构建完成后自动下载 APK 并作为 artifact 上传  
-✅ **构建状态通知**：在 GitHub Actions 中查看构建进度和结果  
+✅ **快速完成**：不等待构建完成，workflow 快速结束（2-5 分钟）  
+✅ **构建链接**：自动生成构建链接，方便查看状态和下载 APK  
 
 ---
 
@@ -101,19 +101,35 @@ eas token:create
 
 ## 查看构建结果
 
-### 方法一：从 GitHub Actions 下载
+### 从 Expo 网站下载（推荐）
 
-1. 进入 **Actions** 标签页
-2. 点击最新的 workflow run
-3. 等待构建完成
-4. 在页面底部找到 **Artifacts** 部分
-5. 点击 **android-apk** 下载 APK 文件
+**注意**：为了加快 workflow 执行速度，GitHub Actions 不会等待构建完成，也不会自动下载 APK。
 
-### 方法二：从 Expo 网站下载
+**下载步骤**：
 
-1. 访问 https://expo.dev/accounts/[your-username]/projects/noteease/builds
-2. 找到最新的构建
-3. 点击下载按钮
+1. **获取构建链接**
+   - 进入 GitHub Actions 页面
+   - 点击最新的 workflow run
+   - 在 Build Summary 中找到构建链接
+
+2. **访问 Expo 网站**
+   - 点击构建链接，或访问：
+   - https://expo.dev/accounts/zyh123456/projects/noteease/builds
+
+3. **查看构建状态**
+   - 构建通常需要 10-20 分钟
+   - 状态会显示为：in-progress → finished
+
+4. **下载 APK**
+   - 构建完成后，点击下载按钮
+   - 或等待构建完成通知
+
+### 构建状态说明
+
+- **in-progress**：正在构建中（10-20 分钟）
+- **finished**：构建完成，可以下载
+- **errored**：构建失败，查看日志
+- **canceled**：构建已取消
 
 ---
 
@@ -141,13 +157,16 @@ on:
 1. **Checkout repository**：检出代码
 2. **Setup Node.js**：设置 Node.js 环境
 3. **Install dependencies**：安装项目依赖
-4. **Install EAS CLI**：安装 EAS CLI 工具
-5. **Configure EAS**：配置 EAS（如果还没有配置）
-6. **Verify Expo authentication**：验证 EXPO_TOKEN 是否有效
-7. **Build APK**：执行 EAS build 命令
-8. **Wait for build**：等待云端构建完成
-9. **Download APK**：下载构建好的 APK
-10. **Upload artifact**：将 APK 上传为 GitHub artifact
+4. **Fix Expo dependencies**：修复依赖版本
+5. **Check Expo doctor**：检查项目配置（警告不影响构建）
+6. **Install EAS CLI**：安装 EAS CLI 工具
+7. **Verify app.json**：验证应用配置
+8. **Configure EAS**：检查 EAS 配置（如果已存在则跳过）
+9. **Verify Expo authentication**：验证 EXPO_TOKEN 是否有效
+10. **Build APK**：触发 EAS build（不等待完成）
+11. **Build Summary**：显示构建链接和状态
+
+**注意**：Workflow 不会等待构建完成，构建在 Expo 云端进行。完成后从 Expo 网站下载 APK。
 
 ---
 
